@@ -16,6 +16,7 @@
 #SBATCH --output=logs/%x-%A_%a.out
 
 set -euo pipefail
+export PYTHONUNBUFFERED=1   # so progress shows in the .out file as it happens
 # Setonix disables default module versions, so name one (override with PYTHON_MODULE=...).
 # It must match the module the venv was built with.
 module load "${PYTHON_MODULE:-python/3.11.6}"

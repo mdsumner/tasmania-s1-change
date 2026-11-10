@@ -14,6 +14,7 @@
 #SBATCH --output=%x-%j.out
 
 set -euo pipefail
+export PYTHONUNBUFFERED=1   # so progress shows in the .out file as it happens
 
 # Needs Python with rasterio, numpy, shapely and matplotlib: a venv made once on the login
 # node (see README, "Setonix setup").
