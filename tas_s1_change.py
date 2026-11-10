@@ -55,6 +55,7 @@ for _k, _v in {
     os.environ.setdefault(_k, _v)
 
 import rasterio  # noqa: E402
+from rasterio.shutil import copy as rio_copy  # noqa: E402
 from rasterio.warp import Resampling, reproject, transform_bounds  # noqa: E402
 
 BUCKET = "dea-public-data-dev"
@@ -349,10 +350,11 @@ def cmd_mosaic(args) -> None:
         if land is not None:
             mean[:, ~land] = np.nan
         out = OUT / f"tas_s1_change_{gname}_{int(res)}m.tif"
+        tmp = out.with_suffix(".tmp.tif")
         prof = dict(driver="GTiff", width=w, height=h, count=5, dtype="float32", crs=DST_CRS,
                     transform=dst_tr, nodata=np.nan, compress="deflate", tiled=True,
-                    blockxsize=512, blockysize=512, predictor=3)
-        with rasterio.open(out, "w", **prof) as d:
+                    blockxsize=512, blockysize=512, predictor=3, bigtiff="if_safer")
+        with rasterio.open(tmp, "w", **prof) as d:
             for bi in range(4):
                 d.write(mean[bi], bi + 1)
                 d.set_band_description(bi + 1, BANDS[bi] + "_db")
@@ -360,6 +362,10 @@ def cmd_mosaic(args) -> None:
             d.set_band_description(5, "n_bursts_vh_apr_oct")
             d.update_tags(units="dB, 10*log10(late/early) of gamma0", source=f"s3://{BUCKET}/{PRODUCT}",
                           n_files=str(len(gfiles)))
+        # rewrite as a COG (internal overviews) so whole-state views over /vsicurl stay cheap
+        rio_copy(tmp, out, driver="COG", COMPRESS="DEFLATE", PREDICTOR="YES", BLOCKSIZE=512,
+                 BIGTIFF="IF_SAFER", RESAMPLING="AVERAGE", NUM_THREADS=str(args.threads))
+        tmp.unlink()
         print(f"{gname}: {len(gfiles)} bursts -> {out}")
 
 
