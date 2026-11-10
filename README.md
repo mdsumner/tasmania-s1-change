@@ -29,18 +29,25 @@ Bursts are averaged onto one EPSG:28355 (MGA zone 55) grid, all tracks together 
 direction, and open water is masked with Natural Earth 10 m land minus lakes (wind on water moves
 backscatter by 5-20 dB between dates and swamps the land).
 
-## Quicklook (80 m inputs, 100 m mosaic, run in a cloud sandbox)
+## Results: native 20 m (Pawsey Setonix)
 
-![quicklook](figures/quicklook_100m.png)
+Full state at native 20 m (`burst --level 0 --boxcar 5`, `mosaic --res 20 --by-orbit`), Setonix
+job 52711341, 10 Nov 2026, code at commit 7885158 (about 30 min on one 32-core node).
 
-Land-only stats (`figures/quicklook_stats_100m.json`):
+![20 m change map](figures/tas_s1_change_20m.png)
+
+Histogram: [`figures/tas_s1_change_hist_20m.png`](figures/tas_s1_change_hist_20m.png).
+Land-only stats (`figures/tas_s1_change_stats_20m.json`):
 
 | Band | Median (dB) | SD (dB) | > +3 dB | < -3 dB |
 |---|---|---|---|---|
-| VH Apr -> Oct | +0.27 | 1.03 | 3.0% | 0.15% |
-| VV Apr -> Oct | +0.38 | 1.36 | 3.5% | 0.14% |
-| VH Sep -> Oct | -0.34 | 0.78 | 0.08% | 0.21% |
-| VV Sep -> Oct | -0.29 | 0.84 | 0.8% | 0.28% |
+| VH Apr -> Oct | +0.29 | 1.14 | 3.7% | 0.22% |
+| VV Apr -> Oct | +0.41 | 1.50 | 4.4% | 0.19% |
+| VH Sep -> Oct | -0.36 | 0.85 | 0.11% | 0.32% |
+| VV Sep -> Oct | -0.30 | 0.93 | 0.97% | 0.38% |
+
+The figure and these stats come from the mosaic averaged down 7x (about 140 m; `figure --max-px
+4000`), not every 20 m pixel. Read the GeoTIFFs below for full-resolution numbers.
 
 What it shows:
 
@@ -48,13 +55,49 @@ What it shows:
   dB by spring (wetter soils and pasture growth after a dry autumn). The wet west and south-west
   barely change. That seasonal signal is much larger than any single event, so an event map
   needs a same-season baseline (the full archive will provide it).
-- **12-day reference:** the noise floor is about 0.8 dB SD, but whole passes shift by about 1 dB
+- **12-day reference:** the noise floor is about 0.9 dB SD, but whole passes shift by about 1 dB
   with straight edges along track boundaries (the north-west on one pass): weather at overpass
   time, such as wet canopy or rain. Per-pass normalisation (subtract each burst's median) would
   remove most of it.
-- **Artefacts:** small lakes missing from Natural Earth still show in VV; a striped strip on the
-  north-west coast (x 300-330 km, y 5420-5440 km in MGA55) comes from near-coast iw3 bursts.
-  Neither matters for land interpretation, but both are worth a look at 20 m.
+- **Artefacts (still present at 20 m):** small lakes missing from Natural Earth show in VV (Central
+  Plateau); a striped strip on the north-west coast (x 300-330 km, y 5420-5440 km in MGA55) comes
+  from near-coast iw3 bursts. Neither matters for land interpretation.
+
+### Outputs (public, Pawsey Acacia)
+
+Under <https://projects.pawsey.org.au/aad-derived/s1/tasmania-s1-change/>, readable directly
+with no credentials:
+
+| File | Size | Contents |
+|---|---|---|
+| `tas_s1_change_all_20m.tif` | 3.3 GB | All tracks averaged |
+| `tas_s1_change_ascending_20m.tif` | 2.9 GB | Ascending passes only (track 126) |
+| `tas_s1_change_descending_20m.tif` | 2.8 GB | Descending passes only (tracks 045, 147) |
+| `tas_s1_change_20m.png`, `tas_s1_change_hist_20m.png`, `tas_s1_change_stats_20m.json` | | As in `figures/` |
+
+Each GeoTIFF is a Float32 COG on a 21098 x 24690 grid at 20 m in EPSG:28355 (DEFLATE, internal
+overviews) with 5 bands: `vh_apr_oct_db`, `vv_apr_oct_db`, `vh_sep_oct_db`, `vv_sep_oct_db`
+(dB, NaN = water, no data or layover/shadow) and `n_bursts_vh_apr_oct` (bursts averaged per
+pixel). The run itself wrote plain tiled GeoTIFFs; these were converted to COG with
+`gdal raster convert --of COG` before upload, and the `mosaic` step now writes COGs directly.
+
+```bash
+gdal raster info /vsicurl/https://projects.pawsey.org.au/aad-derived/s1/tasmania-s1-change/tas_s1_change_all_20m.tif
+```
+
+## Quicklook (80 m inputs, 100 m mosaic, run in a cloud sandbox)
+
+`all --level 1 --boxcar 3 --res 100`, the first test before Setonix:
+[map](figures/quicklook_100m.png), [histogram](figures/quicklook_hist_100m.png),
+[stats](figures/quicklook_stats_100m.json). It shows the same patterns as the 20 m run, with
+narrower tails from the extra smoothing (and a 2x average in the figure step, so about 200 m):
+
+| Band | Median (dB) | SD (dB) | > +3 dB | < -3 dB |
+|---|---|---|---|---|
+| VH Apr -> Oct | +0.26 | 0.94 | 2.6% | 0.09% |
+| VV Apr -> Oct | +0.38 | 1.35 | 3.4% | 0.09% |
+| VH Sep -> Oct | -0.32 | 0.74 | 0.07% | 0.14% |
+| VV Sep -> Oct | -0.28 | 0.83 | 0.88% | 0.25% |
 
 ## Run it
 
@@ -67,7 +110,9 @@ python tas_s1_change.py all --level 1 --boxcar 3 --res 100   # quick look, as ab
 ```
 
 `TAS_S1_WORK` and `TAS_S1_OUT` set the working and output folders (default `work/`, `out/`).
-At 20 m each burst output is ~30-65 MB, ~16 GB for the state; the 20 m mosaic needs ~40 GB RAM.
+`mosaic --by-orbit` writes `out/tas_s1_change_{all,ascending,descending}_<res>m.tif`; `figure`
+uses the `all` mosaic. At 20 m each burst output is ~30-65 MB, ~16 GB for the state; the 20 m
+mosaic needs ~40 GB RAM.
 
 ## Setonix setup (once, on a login node)
 
@@ -83,6 +128,20 @@ full archive or all of Australia use `setonix_array.slurm`, one burst per array 
 a dependent mosaic job (commands are in the file header). Outputs go to
 `$MYSCRATCH/tas-s1-change/`. If you used a different Python module or venv path, set
 `PYTHON_MODULE` and/or `TAS_S1_VENV` before `sbatch` (Slurm passes the environment through).
+
+## Publish to Acacia
+
+From Setonix, after a run (`pawsey1197` is the rclone remote for the `aad-derived` bucket, which is
+public-read). Use `copy`, never `sync`: `sync` deletes anything at the destination that is not in
+the source.
+
+```bash
+SRC=$MYSCRATCH/tas-s1-change/out
+DST=pawsey1197:aad-derived/s1/tasmania-s1-change
+rclone copy --dry-run $SRC $DST                     # what would be sent
+rclone copy -P --transfers 4 --s3-chunk-size 64M --s3-upload-concurrency 4 $SRC $DST
+rclone check $SRC $DST                              # expect 0 differences
+```
 
 ## Next steps
 

@@ -13,7 +13,7 @@ Steps (each is a subcommand, so the per-burst step can be a Slurm array task):
   burst   for one burst (or --task-id N from the index), compute dB change for
           April->October (seasonal + events) and September->October (12-day noise reference)
           -> work/bursts/<burst>.tif  (4 bands: vh_apr_oct, vv_apr_oct, vh_sep_oct, vv_sep_oct)
-  mosaic  average all burst outputs onto one EPSG:28355 (MGA zone 55) grid -> out/*.tif
+  mosaic  average all burst outputs onto one EPSG:28355 (MGA zone 55) grid -> out/*.tif (COG)
   figure  maps + histograms -> out/*.png
   all     run every step serially (fine at --level 2 or coarser on a laptop)
 
@@ -23,10 +23,10 @@ come from the same burst, so the geometry is identical and no co-registration is
 
 Usage
   python tas_s1_change.py index
-  python tas_s1_change.py burst --task-id 0 --level 0
-  python tas_s1_change.py mosaic --res 40
-  python tas_s1_change.py figure
-  python tas_s1_change.py all --level 2 --res 160      # quick look
+  python tas_s1_change.py burst --level 0 --boxcar 5       # or --task-id N in a Slurm array
+  python tas_s1_change.py mosaic --res 20 --by-orbit
+  python tas_s1_change.py figure --res 20
+  python tas_s1_change.py all --level 1 --boxcar 3 --res 100   # quick look
 """
 from __future__ import annotations
 
