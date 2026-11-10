@@ -1,0 +1,6 @@
+work/
+out/
+logs/
+*.tif
+__pycache__/
+*.out
