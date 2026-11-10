@@ -16,9 +16,11 @@
 set -euo pipefail
 
 # Needs Python with rasterio, numpy, shapely and matplotlib: a venv made once on the login
-# node (see README, "Setonix setup"). Check the module name with: module avail python
-module load python
-source "${MYSOFTWARE}/venvs/tas-s1/bin/activate"
+# node (see README, "Setonix setup").
+# Setonix disables default module versions, so name one (override with PYTHON_MODULE=...).
+# It must match the module the venv was built with.
+module load "${PYTHON_MODULE:-python/3.11.6}"
+source "${TAS_S1_VENV:-${MYSOFTWARE}/venvs/tas-s1}/bin/activate"
 
 SRC="${SLURM_SUBMIT_DIR}/tas_s1_change.py"
 export TAS_S1_WORK="${MYSCRATCH}/tas-s1-change/work"

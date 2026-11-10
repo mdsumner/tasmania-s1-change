@@ -16,7 +16,9 @@
 #SBATCH --output=logs/%x-%A_%a.out
 
 set -euo pipefail
-module load python
-source "${MYSOFTWARE}/venvs/tas-s1/bin/activate"
+# Setonix disables default module versions, so name one (override with PYTHON_MODULE=...).
+# It must match the module the venv was built with.
+module load "${PYTHON_MODULE:-python/3.11.6}"
+source "${TAS_S1_VENV:-${MYSOFTWARE}/venvs/tas-s1}/bin/activate"
 export TAS_S1_WORK="${TAS_S1_WORK:-${MYSCRATCH}/tas-s1-change/work}"
 python "${SLURM_SUBMIT_DIR}/tas_s1_change.py" burst --task-id "${SLURM_ARRAY_TASK_ID}" --level 0 --boxcar 5 --threads 2

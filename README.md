@@ -72,17 +72,17 @@ At 20 m each burst output is ~30-65 MB, ~16 GB for the state; the 20 m mosaic ne
 ## Setonix setup (once, on a login node)
 
 ```bash
-module load python            # check the name with: module avail python
+module load python/3.11.6     # Setonix needs an explicit version; see: module avail python
 python -m venv $MYSOFTWARE/venvs/tas-s1
 source $MYSOFTWARE/venvs/tas-s1/bin/activate
 pip install -r requirements.txt
 ```
 
-Then `sbatch --account=<project> setonix.slurm` (one node, 32 threads, under an hour). For the
+Then, from inside the repo folder, `sbatch --account=<project> setonix.slurm` (one node, 32 threads, under an hour). For the
 full archive or all of Australia use `setonix_array.slurm`, one burst per array task, followed by
 a dependent mosaic job (commands are in the file header). Outputs go to
-`$MYSCRATCH/tas-s1-change/`. Not yet run on Setonix: the module name and partition defaults
-are the usual ones but untested.
+`$MYSCRATCH/tas-s1-change/`. If you used a different Python module or venv path, set
+`PYTHON_MODULE` and/or `TAS_S1_VENV` before `sbatch` (Slurm passes the environment through).
 
 ## Next steps
 
