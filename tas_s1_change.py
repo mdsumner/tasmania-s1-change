@@ -235,7 +235,19 @@ def cmd_burst(args) -> None:
         entries = [e for e in index if e["burst"] in args.burst]
     else:
         entries = index
-    todo = [e for e in entries if args.overwrite or not (WORK / "bursts" / f"{e['burst']}.tif").exists()]
+    def up_to_date(e) -> bool:
+        """An existing output counts as done only if it was made with the same level and boxcar."""
+        f = WORK / "bursts" / f"{e['burst']}.tif"
+        if not f.exists():
+            return False
+        try:
+            with rasterio.open(f) as d:
+                t = d.tags()
+            return t.get("level") == str(args.level) and t.get("boxcar") == str(args.boxcar)
+        except Exception:
+            return False
+
+    todo = [e for e in entries if args.overwrite or not up_to_date(e)]
     print(f"{len(todo)} bursts to process at overview level {args.level}")
 
     def run(e):
